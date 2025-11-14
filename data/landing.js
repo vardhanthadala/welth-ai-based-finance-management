@@ -7,7 +7,7 @@ import {
   Zap,
 } from "lucide-react";
 
-// Stats Data 
+// Stats Data
 export const statsData = [
   {
     value: "50K+",
