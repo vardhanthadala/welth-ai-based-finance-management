@@ -3,11 +3,8 @@
 import { auth } from "@clerk/nextjs/server";
 import { db } from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
-import { GoogleGenerativeAI } from "@google/generative-ai";
 import aj from "@/lib/arcjet";
 import { request } from "@arcjet/next";
-
-const genAI = new GoogleGenerativeAI(process.env.GEMINI_API_KEY);
 
 const serializeAmount = (obj) => ({
   ...obj,
@@ -21,15 +18,18 @@ export async function createTransaction(data) {
     if (!userId) throw new Error("Unauthorized");
 
     // Get request data for ArcJet
+    console.log("Creating transaction for user:", userId);
     const req = await request();
 
     // Check rate limit
+    console.log("Checking Arcjet protection...");
     const decision = await aj.protect(req, {
       userId,
       requested: 1, // Specify how many tokens to consume
     });
 
     if (decision.isDenied()) {
+      console.log("Arcjet Denied:", decision.reason);
       if (decision.reason.isRateLimit()) {
         const { remaining, reset } = decision.reason;
         console.error({
@@ -46,6 +46,7 @@ export async function createTransaction(data) {
       throw new Error("Request blocked");
     }
 
+    console.log("Finding user...");
     const user = await db.user.findUnique({
       where: { clerkUserId: userId },
     });
@@ -54,6 +55,7 @@ export async function createTransaction(data) {
       throw new Error("User not found");
     }
 
+    console.log("Finding account:", data.accountId);
     const account = await db.account.findUnique({
       where: {
         id: data.accountId,
@@ -95,6 +97,7 @@ export async function createTransaction(data) {
 
     return { success: true, data: serializeAmount(transaction) };
   } catch (error) {
+    console.error("Create Transaction Error:", error.message);
     throw new Error(error.message);
   }
 }
@@ -230,22 +233,18 @@ export async function getUserTransactions(query = {}) {
 // Scan Receipt
 export async function scanReceipt(file) {
   try {
-    const model = genAI.getGenerativeModel({ model: "gemini-2.0-flash" });
-
-    // Convert File to ArrayBuffer
     const arrayBuffer = await file.arrayBuffer();
-    // Convert ArrayBuffer to Base64
-    const base64String = Buffer.from(arrayBuffer).toString("base64");
+    const base64String = Buffer.from(arrayBuffer).toString('base64');
 
     const prompt = `
-      Analyze this receipt image and extract the following information in JSON format:
+      Analyze this receipt image (provided as base64) and extract the following information in JSON format:
       - Total amount (just the number)
       - Date (in ISO format)
       - Description or items purchased (brief summary)
       - Merchant/store name
       - Suggested category (one of: housing,transportation,groceries,utilities,entertainment,food,shopping,healthcare,education,personal,travel,insurance,gifts,bills,other-expense )
       
-      Only respond with valid JSON in this exact format:
+      Respond ONLY with valid JSON in this exact format:
       {
         "amount": number,
         "date": "ISO date string",
@@ -253,40 +252,51 @@ export async function scanReceipt(file) {
         "merchantName": "string",
         "category": "string"
       }
-
-      If its not a recipt, return an empty object
     `;
 
-    const result = await model.generateContent([
-      {
-        inlineData: {
-          data: base64String,
-          mimeType: file.type,
-        },
+    const response = await fetch('https://api.groq.com/openai/v1/chat/completions', {
+      method: 'POST',
+      headers: {
+        'Authorization': `Bearer ${process.env.GROQ_API_KEY}`,
+        'Content-Type': 'application/json',
       },
-      prompt,
-    ]);
+      body: JSON.stringify({
+        model: 'meta-llama/llama-4-scout-17b-16e-instruct',
+        messages: [
+          {
+            role: 'user',
+            content: [
+              { type: 'text', text: prompt },
+              {
+                type: 'image_url',
+                image_url: { url: `data:${file.type};base64,${base64String}` },
+              },
+            ],
+          },
+        ],
+        response_format: { type: 'json_object' },
+      }),
+    });
 
-    const response = await result.response;
-    const text = response.text();
-    const cleanedText = text.replace(/```(?:json)?\n?/g, "").trim();
-
-    try {
-      const data = JSON.parse(cleanedText);
-      return {
-        amount: parseFloat(data.amount),
-        date: new Date(data.date),
-        description: data.description,
-        category: data.category,
-        merchantName: data.merchantName,
-      };
-    } catch (parseError) {
-      console.error("Error parsing JSON response:", parseError);
-      throw new Error("Invalid response format from Gemini");
+    const result = await response.json();
+    
+    if (!result.choices || !result.choices[0]) {
+      console.error("Groq API Error Response:", result);
+      throw new Error('Invalid response format from Groq');
     }
+    
+    const data = JSON.parse(result.choices[0].message.content);
+
+    return {
+      amount: parseFloat(data.amount),
+      date: new Date(data.date),
+      description: data.description,
+      category: data.category,
+      merchantName: data.merchantName,
+    };
   } catch (error) {
-    console.error("Error scanning receipt:", error);
-    throw new Error("Failed to scan receipt");
+    console.error('Error scanning receipt with Groq:', error);
+    throw new Error('Failed to scan receipt. Please try manual entry.');
   }
 }
 
