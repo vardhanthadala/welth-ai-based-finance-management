@@ -9,22 +9,22 @@ const USER_ID = "user-id";
 // Categories with their typical amount ranges
 const CATEGORIES = {
   INCOME: [
-    { name: "salary", range: [5000, 8000] },
-    { name: "freelance", range: [1000, 3000] },
-    { name: "investments", range: [500, 2000] },
-    { name: "other-income", range: [100, 1000] },
+    { name: "salary", range: [50000, 150000] },
+    { name: "freelance", range: [10000, 50000] },
+    { name: "investments", range: [5000, 20000] },
+    { name: "other-income", range: [1000, 10000] },
   ],
   EXPENSE: [
-    { name: "housing", range: [1000, 2000] },
-    { name: "transportation", range: [100, 500] },
-    { name: "groceries", range: [200, 600] },
-    { name: "utilities", range: [100, 300] },
-    { name: "entertainment", range: [50, 200] },
-    { name: "food", range: [50, 150] },
-    { name: "shopping", range: [100, 500] },
-    { name: "healthcare", range: [100, 1000] },
-    { name: "education", range: [200, 1000] },
-    { name: "travel", range: [500, 2000] },
+    { name: "housing", range: [10000, 35000] },
+    { name: "transportation", range: [1000, 5000] },
+    { name: "groceries", range: [3000, 10000] },
+    { name: "utilities", range: [1000, 5000] },
+    { name: "entertainment", range: [1000, 10000] },
+    { name: "food", range: [500, 5000] },
+    { name: "shopping", range: [1000, 15000] },
+    { name: "healthcare", range: [1000, 10000] },
+    { name: "education", range: [5000, 50000] },
+    { name: "travel", range: [5000, 50000] },
   ],
 };
 

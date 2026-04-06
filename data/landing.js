@@ -10,20 +10,20 @@ import {
 // Stats Data
 export const statsData = [
   {
-    value: "50K+",
-    label: "Active Users",
+    value: "AI-Powered",
+    label: "Financial Analytics",
   },
   {
-    value: "$2B+",
-    label: "Transactions Tracked",
+    value: "100%",
+    label: "Encrypted & Secure",
   },
   {
-    value: "99.9%",
-    label: "Uptime",
+    value: "Real-time",
+    label: "Data Syncing",
   },
   {
-    value: "4.9/5",
-    label: "User Rating",
+    value: "Modern",
+    label: "Cloud Architecture",
   },
 ];
 
